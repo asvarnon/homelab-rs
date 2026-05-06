@@ -6,7 +6,7 @@ Rust workspace for homelab automation tooling.
 
 - `homelab-core`: Pure capabilities and data models.
 - `homelab-ops`: Workflows that compose capabilities.
-- `homelab-mcp`: MCP adapter for Claude.
+- `homelab-mcp`: MCP adapter.
 - `homelab-discord`: Discord adapter for friends.
 
 ## Build
