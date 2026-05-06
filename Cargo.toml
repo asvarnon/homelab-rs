@@ -1,0 +1,39 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "crates/homelab-core",
+    "crates/homelab-ops",
+    "crates/homelab-mcp",
+    "crates/homelab-discord",
+]
+
+[workspace.dependencies]
+# Runtime & Concurrency
+tokio = { version = "1", features = ["full"] }
+rayon = "1.8"
+async-trait = "0.1"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error Handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# HTTP & Network
+reqwest = { version = "0.11", features = ["json"] }
+ipnet = "2.0"
+
+# Utilities
+derive_more = "0.99"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.0", features = ["serde", "v4"] }
+
+# Observability
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Database (mcp only)
+sqlx = { version = "0.7", features = ["runtime-tokio", "sqlite", "chrono"] }

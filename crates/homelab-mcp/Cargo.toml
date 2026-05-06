@@ -1,0 +1,17 @@
+[package]
+name = "homelab-mcp"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+homelab-core = { path = "../homelab-core" }
+homelab-ops = { path = "../homelab-ops" }
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+sqlx.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+# In a real implementation, we'd use a proper MCP crate here.
+# For now, we'll placeholder.
