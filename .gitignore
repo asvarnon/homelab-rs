@@ -3,4 +3,5 @@ config.toml
 .mcp.json
 .env
 .env.local
+scripts/*.local.ps1
 **/*.rs.bk
