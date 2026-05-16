@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::net::Ipv4Addr;
 
+use crate::utils::expire_to_hours_remaining;
+
 //generic result response for opnsense api endpoints
 #[derive(Debug, Deserialize)]
 pub struct SearchResponse<T> {
@@ -22,7 +24,17 @@ pub struct DhcpLease {
     pub interface: String,
     #[serde(rename = "if_descr")]
     pub interface_desc: String,
-    pub expire: u64,
+    #[serde(rename = "expire", deserialize_with = "deserialize_expire")]
+    pub expire: String,
+}
+
+// not most efficient but using for learning custom deserialization
+// 'de is the lifetime parameter for the deserializer,
+// D is the geeneric deserializer type, allowing the function to work with any deserializer
+// (e.g. serde_json, serde_yaml) that has the deserialize trait implemented
+fn deserialize_expire<'de, D: serde::Deserializer<'de>>(d: D) -> Result<String, D::Error> {
+    let timestamp = u64::deserialize(d)?; //deserialize the timestamp from the deserializer
+    Ok(expire_to_hours_remaining(timestamp)) //pass the timestamp to the expire_to_days_remaining function
 }
 
 //may or may not use below..
