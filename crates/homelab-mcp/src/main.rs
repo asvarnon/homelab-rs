@@ -125,10 +125,10 @@ impl HomelabMcp {
     }
 
     #[tool(
-        name = "get_dchp_leases",
+        name = "get_dhcp_leases",
         description = "Gets DHCP leases from OPNsense"
     )]
-    async fn get_dchp_leases(&self) -> std::result::Result<CallToolResult, McpError> {
+    async fn get_dhcp_leases(&self) -> std::result::Result<CallToolResult, McpError> {
         let leases = opnsense::get_dhcp_leases(&self.client).await.map_err(|e| {
             McpError::new(
                 ErrorCode::INTERNAL_ERROR,
