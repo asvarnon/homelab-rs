@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "crates/homelab-discord/**"
+      - ".github/workflows/discord-bot.yml"
 
 jobs:
   build-and-push:
