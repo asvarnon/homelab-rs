@@ -1,15 +1,18 @@
 # homelab-rs
 
-A Rust MCP server that exposes homelab infrastructure as AI-callable tools. Built as a typed Rust replacement for the original Python `mcp-homelab`.
+A Rust workspace with two tools: an MCP server that exposes homelab infrastructure as AI-callable tools, and a Discord bot backed by local LLM inference.
 
 ## Architecture
 
-Two-crate workspace:
+Three-crate workspace:
 
 - **`homelab-core`** — HTTP client, config loading, auth, and all tool functions. No MCP dependency. Testable in isolation via `cargo test` and `examples/`.
 - **`homelab-mcp`** — Thin adapter that wires `homelab-core` tool functions to the MCP protocol over stdio. Uses `rmcp` with `#[tool]` macros.
+- **`homelab-discord`** — Discord bot. @mention triggers a thread; all replies in that thread share one conversation context backed by Redis. LLM inference via Ollama with SearXNG as a web search tool.
 
 The boundary rule: `homelab-core` returns domain types (`Vec<NodeSummary>`, `HomelabError`). `homelab-mcp` converts those to protocol types (`CallToolResult`, `McpError`). MCP types never enter `homelab-core`.
+
+`homelab-discord` is standalone — it does not depend on `homelab-core`. It manages its own Ollama and Redis connections.
 
 ## Tools
 
@@ -106,6 +109,35 @@ cargo run --example opnsense_leases -p homelab-core
 ```powershell
 cargo install --path crates/homelab-mcp
 ```
+
+## Discord Bot
+
+`homelab-discord` is a friend-group Discord bot. @mention it anywhere to start a conversation — the bot creates a thread and all replies in that thread share one context. No @mention needed for follow-up messages inside the thread.
+
+### How it works
+
+- **Trigger:** @mention in any channel → bot creates a thread, loads/saves history in Redis
+- **Thread continuity:** subsequent messages in a bot-owned thread are answered without requiring a mention
+- **LLM:** Ollama `/api/chat` with tool calling enabled
+- **Search:** SearXNG invoked automatically by the LLM when current information is needed
+- **Persona:** configured via `PERSONA` env var — multiline system prompt, no restart of the image required, just update `.env` and `docker compose restart discord-bot`
+
+### Deploy
+
+Deployed via Docker Compose on the inference host. All configuration via env vars — no defaults, bot panics at startup if any are missing:
+
+| Var | Description |
+|---|---|
+| `DISCORD_TOKEN` | Bot token from Discord developer portal |
+| `OLLAMA_HOST` | Ollama base URL, e.g. `http://host.docker.internal:11434` |
+| `OLLAMA_MODEL` | Model name, e.g. `gemma4:12b-it-q4_K_M` |
+| `REDIS_URL` | Redis connection string, e.g. `redis://redis:6379` |
+| `SEARXNG_URL` | SearXNG search endpoint, e.g. `http://<lxc-ip>:8888/search` |
+| `PERSONA` | Full system prompt (multiline, double-quoted in `.env`) |
+
+The Docker image is built and published via GitHub Actions. The host pulls the image — it does not need Rust installed.
+
+---
 
 ## OPNsense API Notes
 
