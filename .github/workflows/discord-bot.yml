@@ -2,10 +2,8 @@ name: Build and publish homelab-discord
 
 on:
   push:
-    branches: [main]
-    paths:
-      - "crates/homelab-discord/**"
-      - ".github/workflows/discord-bot.yml"
+    tags:
+      - "v*"
 
 jobs:
   build-and-push:
@@ -34,4 +32,4 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ env.OWNER }}/homelab-discord:latest
-            ghcr.io/${{ env.OWNER }}/homelab-discord:${{ github.sha }}
+            ghcr.io/${{ env.OWNER }}/homelab-discord:${{ github.ref_name }}
