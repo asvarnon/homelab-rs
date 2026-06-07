@@ -13,5 +13,7 @@ sqlx.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 rmcp = { version = "1.6.0", features = ["server", "transport-io"] }
+axum = "0.8.9"
+jsonwebtoken = "10.4.0"
 # In a real implementation, we'd use a proper MCP crate here.
 # For now, we'll placeholder.

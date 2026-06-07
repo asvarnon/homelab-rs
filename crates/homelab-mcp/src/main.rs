@@ -11,6 +11,7 @@ use rmcp::{handler::server::tool::ToolRouter, model::CallToolResult, tool, tool_
 use rmcp::{tool_handler, ServerHandler};
 use rmcp::{transport::stdio, ServiceExt};
 use tracing::info;
+mod auth;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
