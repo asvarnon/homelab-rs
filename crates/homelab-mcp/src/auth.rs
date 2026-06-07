@@ -2,6 +2,8 @@ use axum::{extract::Request, http::StatusCode, middleware::Next, response::Respo
 use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 
+pub struct Auth {}
+
 pub async fn require_cf_jwt(request: Request, next: Next) -> Result<Response, StatusCode> {
     let token = request
         .headers()
@@ -20,8 +22,8 @@ fn verify_token(token: &str) -> bool {
     let header = decode_header(&token);
     let token_message = decode::<Claims>(
         &token,
-        &DecodingKey::from_secret("secret".as_ref()),
-        &Validation::new(Algorithm::HS256),
+        &DecodingKey::from_secret("test".as_ref()),
+        &Validation::new(header.unwrap().alg),
     );
 
     todo!()

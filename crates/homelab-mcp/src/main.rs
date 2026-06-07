@@ -10,6 +10,7 @@ use rmcp::model::{Content, ErrorCode, ErrorData as McpError};
 use rmcp::{handler::server::tool::ToolRouter, model::CallToolResult, tool, tool_router};
 use rmcp::{tool_handler, ServerHandler};
 use rmcp::{transport::stdio, ServiceExt};
+use std::sync::Arc;
 use tracing::info;
 mod auth;
 
@@ -22,6 +23,7 @@ async fn main() -> anyhow::Result<()> {
     // Boot boundary: load runtime configuration before constructing the adapter.
     let config_path = std::env::var("HOMELAB_CONFIG").unwrap_or_else(|_| "config.toml".to_string());
     let config = Config::load(config_path)?;
+    let cf_url = std::env::var("CF_URL").expect("No Cloudflare URL connection...");
 
     // Core dependency: HomelabClient knows how to call configured HTTP endpoints.
     let client = HomelabClient::new(config);
