@@ -57,7 +57,9 @@ fn verify_token(token: &str, auth_keys: &AuthKeys) -> bool {
         return false;
     };
 
-    decode::<Claims>(&token, &decoding_key, &Validation::new(header.alg)).is_ok()
+    let mut validation = Validation::new(header.alg);
+    validation.set_audience(&[std::env::var("CF_AUD").expect("CF_AUD not set")]); //sets AUD id
+    decode::<Claims>(&token, &decoding_key, &validation).is_ok()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
