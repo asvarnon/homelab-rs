@@ -159,7 +159,11 @@ enum RawClusterResource {
     Qemu(RawVm),
     Lxc(RawLxc),
     Node(RawNode),
+    // Payload is required so serde can deserialize these resource types (an empty
+    // variant would reject them); not yet surfaced in cluster summaries.
+    #[allow(dead_code)]
     Storage(RawStorage),
+    #[allow(dead_code)]
     Sdn(RawSdn),
 }
 

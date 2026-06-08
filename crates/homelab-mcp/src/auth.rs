@@ -54,7 +54,7 @@ pub async fn require_cf_jwt(
 }
 
 fn verify_token(token: &str, auth_keys: &AuthKeys) -> Result<(), AuthFailure> {
-    let header = decode_header(&token).map_err(|_| AuthFailure::HeaderDecodeFailed)?;
+    let header = decode_header(token).map_err(|_| AuthFailure::HeaderDecodeFailed)?;
 
     let key = auth_keys
         .keys
