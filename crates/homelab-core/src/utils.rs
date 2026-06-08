@@ -1,4 +1,4 @@
-use chrono::{DateTime, Local, TimeZone};
+use chrono::{DateTime, Local};
 use humantime::format_duration;
 use std::time::Duration;
 

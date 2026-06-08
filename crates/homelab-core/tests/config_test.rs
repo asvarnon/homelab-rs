@@ -10,9 +10,12 @@ fn test_config_loading() {
     let config = Config::load(&config_path).expect("Failed to load fixture config");
 
     // Test Proxmox
-    let proxmox = config.endpoints.get("proxmox").expect("Proxmox endpoint not found");
+    let proxmox = config
+        .endpoints
+        .get("proxmox")
+        .expect("Proxmox endpoint not found");
     assert_eq!(proxmox.url, "https://10.10.10.1:8006");
-    
+
     if let homelab_core::config::AuthConfig::ApiToken { id_env, secret_env } = &proxmox.auth {
         assert_eq!(id_env, "PROXMOX_TOKEN_ID");
         assert_eq!(secret_env, "PROXMOX_TOKEN_SECRET");
@@ -21,7 +24,10 @@ fn test_config_loading() {
     }
 
     // Test OPNsense
-    let opnsense = config.endpoints.get("opnsense").expect("OPNsense endpoint not found");
+    let opnsense = config
+        .endpoints
+        .get("opnsense")
+        .expect("OPNsense endpoint not found");
     assert_eq!(opnsense.url, "https://10.10.10.1");
     if let homelab_core::config::AuthConfig::Basic { user_env, pass_env } = &opnsense.auth {
         assert_eq!(user_env, "OPNSENSE_API_KEY");
@@ -31,6 +37,9 @@ fn test_config_loading() {
     }
 
     // Test Llama (None)
-    let llama = config.endpoints.get("llama").expect("Llama endpoint not found");
+    let llama = config
+        .endpoints
+        .get("llama")
+        .expect("Llama endpoint not found");
     assert!(matches!(llama.auth, homelab_core::config::AuthConfig::None));
 }

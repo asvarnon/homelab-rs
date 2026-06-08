@@ -13,4 +13,3 @@ pub use client::HomelabClient;
 pub use config::Config;
 pub use error::{HomelabError, Result};
 pub use models::*;
-pub use tools::*;

@@ -3,6 +3,7 @@ use crate::error::{HomelabError, Result};
 use reqwest::{header, Client};
 use serde::de::DeserializeOwned;
 
+#[derive(Clone)]
 pub struct HomelabClient {
     client: Client,
     config: Config,
@@ -42,14 +43,14 @@ impl HomelabClient {
 
         match &endpoint.auth {
             AuthConfig::ApiToken { id_env, secret_env } => {
-                let id = self.get_env_var(&id_env)?;
-                let secret = self.get_env_var(&secret_env)?;
+                let id = self.get_env_var(id_env)?;
+                let secret = self.get_env_var(secret_env)?;
                 let token = format!("PVEAPIToken={}={}", id, secret);
                 request = request.header(header::AUTHORIZATION, token);
             }
             AuthConfig::Basic { user_env, pass_env } => {
-                let user = self.get_env_var(&user_env)?;
-                let pass = self.get_env_var(&pass_env)?;
+                let user = self.get_env_var(user_env)?;
+                let pass = self.get_env_var(pass_env)?;
                 request = request.basic_auth(user, Some(pass));
                 // Note: This is a simplification. Real basic auth might be different.
                 // Or maybe the env var is just the whole header?
