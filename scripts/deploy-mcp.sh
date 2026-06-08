@@ -52,7 +52,7 @@ sudo systemctl restart "$SERVICE"
 
 echo "==> Health-checking $HEALTH_URL"
 for _ in $(seq 1 10); do
-  HTTP_CODE="$(curl -s -o /dev/null -w '%{http_code}' "$HEALTH_URL" || echo "000")"
+  HTTP_CODE="$(curl -s -o /dev/null -w '%{http_code}' "$HEALTH_URL" || true)"
   if [[ "$HTTP_CODE" != "000" ]]; then
     echo "==> $TAG is up (HTTP $HTTP_CODE from $HEALTH_URL)."
     exit 0
