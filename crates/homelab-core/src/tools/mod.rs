@@ -1,3 +1,3 @@
-pub mod proxmox;
-pub mod opnsense;
 pub mod inference;
+pub mod opnsense;
+pub mod proxmox;

@@ -1,9 +1,9 @@
 use homelab_core::client::HomelabClient;
 use homelab_core::config::{AuthConfig, Config, EndpointConfig};
-use std::collections::HashMap;
-use wiremock::matchers::{method, path, header};
-use wiremock::{Mock, MockServer, ResponseTemplate};
 use serde::Deserialize;
+use std::collections::HashMap;
+use wiremock::matchers::{header, method, path};
+use wiremock::{Mock, MockServer, ResponseTemplate};
 
 #[derive(Debug, Deserialize, PartialEq)]
 struct TestResponse {
