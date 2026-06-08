@@ -73,11 +73,12 @@ fn verify_token(token: &str, auth_keys: &AuthKeys) -> Result<(), AuthFailure> {
     Ok(())
 }
 
+// Empty on purpose: `decode` needs a target type to deserialize the token's
+// claims into, but registered-claim checks (exp/aud/nbf/iss) run internally
+// against the raw payload regardless of this type, and we don't read any
+// claims ourselves — only whether decode succeeds or fails.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct Claims {
-    sub: String,
-    company: String,
-}
+struct Claims {}
 
 #[derive(Debug)]
 enum AuthFailure {
