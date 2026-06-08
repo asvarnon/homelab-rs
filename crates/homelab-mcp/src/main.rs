@@ -2,20 +2,28 @@
 //!
 //! MCP adapter LLMs.
 
+use auth::{AuthKeys, Key};
+use axum::{middleware, Router};
 use homelab_core::{
     tools::{opnsense, proxmox},
     Config, HomelabClient,
 };
 use rmcp::model::{Content, ErrorCode, ErrorData as McpError};
+use rmcp::transport::streamable_http_server::{
+    session::local::LocalSessionManager, StreamableHttpServerConfig, StreamableHttpService,
+};
 use rmcp::{handler::server::tool::ToolRouter, model::CallToolResult, tool, tool_router};
 use rmcp::{tool_handler, ServerHandler};
 use rmcp::{transport::stdio, ServiceExt};
-use std::sync::Arc;
+use std::{ptr::read, sync::Arc};
 use tracing::info;
 mod auth;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Load .env if present — silently no-ops if missing (e.g. prod, where vars come from the environment directly).
+    dotenvy::dotenv().ok();
+
     tracing_subscriber::fmt()
         .with_writer(std::io::stderr)
         .init();
@@ -24,20 +32,35 @@ async fn main() -> anyhow::Result<()> {
     let config_path = std::env::var("HOMELAB_CONFIG").unwrap_or_else(|_| "config.toml".to_string());
     let config = Config::load(config_path)?;
     let cf_url = std::env::var("CF_URL").expect("No Cloudflare URL connection...");
+    let auth_keys = Arc::new(reqwest::get(&cf_url).await?.json::<AuthKeys>().await?); //call cloudflare key url.
 
     // Core dependency: HomelabClient knows how to call configured HTTP endpoints.
     let client = HomelabClient::new(config);
 
     info!("Starting homelab-mcp server...");
 
-    // Adapter instance: owns core dependencies and exposes them as MCP tools.
-    let server = HomelabMcp::new(client);
+    //build mcp service
+    let mcp_service = StreamableHttpService::new(
+        move || Ok(HomelabMcp::new(client.clone())), // factory — called per session
+        LocalSessionManager::default().into(),
+        StreamableHttpServerConfig::default(),
+    );
 
-    // Transport boundary: speak MCP JSON-RPC over stdin/stdout.
-    let service = server.serve(stdio()).await?;
+    //build router
+    let app = Router::new()
+        .nest_service("/mcp", mcp_service)
+        .layer(middleware::from_fn_with_state(
+            auth_keys.clone(),
+            auth::require_cf_jwt, // <- pass the function itself, axum calls it per-request
+        ))
+        .with_state(auth_keys);
+
+    // bind and serve listener
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:8787").await?;
+    axum::serve(listener, app).await?;
 
     // Keep serving until the MCP transport shuts down.
-    service.waiting().await?;
+    // service.waiting().await?;
 
     info!("Shutting down...");
     Ok(())

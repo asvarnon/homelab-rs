@@ -3,6 +3,7 @@ use crate::error::{HomelabError, Result};
 use reqwest::{header, Client};
 use serde::de::DeserializeOwned;
 
+#[derive(Clone)]
 pub struct HomelabClient {
     client: Client,
     config: Config,
