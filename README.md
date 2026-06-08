@@ -7,7 +7,7 @@ A Rust workspace with two tools: an MCP server that exposes homelab infrastructu
 Three-crate workspace:
 
 - **`homelab-core`** — HTTP client, config loading, auth, and all tool functions. No MCP dependency. Testable in isolation via `cargo test` and `examples/`.
-- **`homelab-mcp`** — Thin adapter that wires `homelab-core` tool functions to the MCP protocol over stdio. Uses `rmcp` with `#[tool]` macros.
+- **`homelab-mcp`** — Thin adapter that wires `homelab-core` tool functions to the MCP protocol over HTTP. Uses `rmcp` with `#[tool]` macros. Deployed to a VM behind a Cloudflare Tunnel; all inbound requests are validated against a Cloudflare Access JWT before reaching the tool handlers.
 - **`homelab-discord`** — Discord bot. @mention triggers a thread; all replies in that thread share one conversation context backed by Redis. LLM inference via Ollama with SearXNG as a web search tool.
 
 The boundary rule: `homelab-core` returns domain types (`Vec<NodeSummary>`, `HomelabError`). `homelab-mcp` converts those to protocol types (`CallToolResult`, `McpError`). MCP types never enter `homelab-core`.
@@ -91,7 +91,66 @@ cargo install --path crates/homelab-mcp
 
 ### 4. Wire into your MCP client
 
-Add `homelab-mcp` as an MCP server in your client of choice. The binary speaks MCP JSON-RPC over stdio with no additional arguments required.
+For local dev (`PROFILE=local`), the binary binds to `http://127.0.0.1:8787/mcp`. Add it to your client:
+
+```bash
+claude mcp add --transport http -s user homelab-mcp-local http://127.0.0.1:8787/mcp
+```
+
+For the production instance (see Deployment below), connect via the public tunnel URL using a Cloudflare Access service token:
+
+```bash
+claude mcp add --transport http \
+  -H "CF-Access-Client-Id: <client-id>" \
+  -H "CF-Access-Client-Secret: <client-secret>" \
+  -s user \
+  homelab-mcp https://<your-tunnel-hostname>/mcp
+```
+
+The `-s user` flag registers the server globally across all Claude Code sessions, not just inside this repo.
+
+## Deployment
+
+`homelab-mcp` deploys to a Linux VM via a tag-triggered GitHub Actions build and a pull-based deploy script.
+
+### Releasing
+
+Tag with the `homelab-mcp-v*` prefix — the `homelab-mcp-release.yml` workflow builds a release binary and attaches it to the GitHub Release:
+
+```bash
+git tag homelab-mcp-v0.2.0
+git push origin homelab-mcp-v0.2.0
+```
+
+### Deploying to the VM
+
+SSH into the VM and run the deploy script. It downloads the release binary, atomically swaps the `current` symlink, restarts the service, health-checks, and auto-rolls-back on failure:
+
+```bash
+ssh mcpadmin@mcp-homelab
+cd /opt/mcp-homelab && sudo ./deploy-mcp.sh homelab-mcp-v0.2.0
+```
+
+### Environment variables (VM)
+
+Secrets live in `/opt/mcp-homelab/.env` (mode 400, owned by the service user). Required vars:
+
+| Var | Description |
+|---|---|
+| `CF_CERTS_URL` | Cloudflare Access JWKS endpoint — `https://<team>.cloudflareaccess.com/cdn-cgi/access/certs` |
+| `CF_AUD` | Access application AUD tag (Zero Trust → Applications → Additional settings → Token) |
+| `PROFILE` | Set to `production` to enforce CF JWT validation; `local` skips it |
+| `MCP_PUBLIC_HOST` | Public tunnel hostname (e.g. `your-server.your-domain.com`) — added to rmcp's Host-header allowlist |
+| `PROXMOX_TOKEN_ID` | Proxmox API token ID |
+| `PROXMOX_TOKEN_SECRET` | Proxmox API token secret |
+| `OPNSENSE_API_KEY` | OPNsense API key |
+| `OPNSENSE_API_SECRET` | OPNsense API secret |
+
+### Auth
+
+All inbound traffic goes through Cloudflare Tunnel → Cloudflare Access (outer gate) → CF JWT validation middleware (inner check). The server binds to `127.0.0.1:8787` only; the tunnel handles external exposure. Set `PROFILE=local` to bypass JWT validation for local dev.
+
+---
 
 ## Development
 
