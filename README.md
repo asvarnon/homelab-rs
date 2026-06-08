@@ -124,11 +124,10 @@ git push origin homelab-mcp-v0.2.0
 
 ### Deploying to the VM
 
-SSH into the VM and run the deploy script. It downloads the release binary, atomically swaps the `current` symlink, restarts the service, health-checks, and auto-rolls-back on failure:
+SSH into the VM and run the deploy script from `/opt/mcp-homelab`. It downloads the release binary, atomically swaps the `current` symlink, restarts the service, health-checks, and auto-rolls-back on failure:
 
 ```bash
-ssh mcpadmin@mcp-homelab
-cd /opt/mcp-homelab && sudo ./deploy-mcp.sh homelab-mcp-v0.2.0
+sudo ./deploy-mcp.sh homelab-mcp-v0.2.0
 ```
 
 ### Environment variables (VM)
@@ -189,7 +188,7 @@ Deployed via Docker Compose on the inference host. All configuration via env var
 |---|---|
 | `DISCORD_TOKEN` | Bot token from Discord developer portal |
 | `OLLAMA_HOST` | Ollama base URL, e.g. `http://host.docker.internal:11434` |
-| `OLLAMA_MODEL` | Model name, e.g. `gemma4:12b-it-q4_K_M` |
+| `OLLAMA_MODEL` | Model name, e.g. `llama3.2:latest` |
 | `REDIS_URL` | Redis connection string, e.g. `redis://redis:6379` |
 | `SEARXNG_URL` | SearXNG search endpoint, e.g. `http://<lxc-ip>:8888/search` |
 | `PERSONA` | Full system prompt (multiline, double-quoted in `.env`) |
