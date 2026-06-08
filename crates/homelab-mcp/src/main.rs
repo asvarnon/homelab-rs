@@ -34,6 +34,10 @@ async fn main() -> anyhow::Result<()> {
     let config = Config::load(config_path)?;
     let cf_url = std::env::var("CF_CERTS_URL").expect("CF_CERTS_URL not set");
     let profile = std::env::var("PROFILE").expect("No profile is configured...");
+    // Public hostname this server is reachable at (e.g. via Cloudflare Tunnel) — added to
+    // rmcp's Host-header allowlist alongside the loopback defaults so the DNS-rebinding
+    // guard doesn't reject legitimate traffic arriving through the tunnel.
+    let public_host = std::env::var("MCP_PUBLIC_HOST").ok();
 
     let auth_client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
@@ -54,11 +58,22 @@ async fn main() -> anyhow::Result<()> {
 
     info!("Starting homelab-mcp server...");
 
+    // with_allowed_hosts replaces rmcp's default list outright, so the loopback
+    // entries have to be repeated here alongside the public tunnel hostname.
+    let mut allowed_hosts = vec![
+        "localhost".to_string(),
+        "127.0.0.1".to_string(),
+        "::1".to_string(),
+    ];
+    if let Some(host) = &public_host {
+        allowed_hosts.push(host.clone());
+    }
+
     //build mcp service
     let mcp_service = StreamableHttpService::new(
         move || Ok(HomelabMcp::new(client.clone())), // factory — called per session
         LocalSessionManager::default().into(),
-        StreamableHttpServerConfig::default(),
+        StreamableHttpServerConfig::default().with_allowed_hosts(allowed_hosts),
     );
 
     //build router
