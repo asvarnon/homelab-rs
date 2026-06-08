@@ -124,15 +124,26 @@ git push origin homelab-mcp-v0.2.0
 
 ### Deploying to the VM
 
-SSH into the VM and run the deploy script from `/opt/mcp-homelab`. It downloads the release binary, atomically swaps the `current` symlink, restarts the service, health-checks, and auto-rolls-back on failure:
+The deploy script assumes the following are already in place on the VM:
+- `/opt/mcp-homelab/` directory exists with `deploy-mcp.sh` copied into it
+- A `systemd` service unit (`mcp-homelab.service`) exists with `ExecStart=/opt/mcp-homelab/current`
+- The `.env` file exists at `/opt/mcp-homelab/.env` (see below)
+
+The script manages everything else: it creates `/opt/mcp-homelab/releases/<tag>/`, downloads the binary, and creates or updates the `current` symlink on each deploy. It does not bootstrap the directory structure or systemd unit from scratch.
+
+SSH into the VM and run from `/opt/mcp-homelab`:
 
 ```bash
 sudo ./deploy-mcp.sh homelab-mcp-v0.2.0
 ```
 
-### Environment variables (VM)
+It atomically swaps the `current` symlink, restarts the service, health-checks, and auto-rolls-back on failure.
 
-Secrets live in `/opt/mcp-homelab/.env` (mode 400, owned by the service user). Required vars:
+### Runtime configuration (VM)
+
+The server loads configuration from a `.env` file at `/opt/mcp-homelab/.env` at startup via `dotenvy` — these are **not** system environment variables. The file should be mode 400, owned by the service user.
+
+Required entries:
 
 | Var | Description |
 |---|---|
