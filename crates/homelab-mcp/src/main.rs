@@ -31,8 +31,19 @@ async fn main() -> anyhow::Result<()> {
     // Boot boundary: load runtime configuration before constructing the adapter.
     let config_path = std::env::var("HOMELAB_CONFIG").unwrap_or_else(|_| "config.toml".to_string());
     let config = Config::load(config_path)?;
-    let cf_url = std::env::var("CF_URL").expect("No Cloudflare URL connection...");
-    let auth_keys = Arc::new(reqwest::get(&cf_url).await?.json::<AuthKeys>().await?); //call cloudflare key url.
+    let cf_url = std::env::var("CF_CERTS_URL").expect("CF_CERTS_URL not set");
+
+    let auth_client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()?;
+    let auth_keys = Arc::new(
+        auth_client
+            .get(&cf_url)
+            .send()
+            .await?
+            .json::<AuthKeys>()
+            .await?,
+    ); //call cloudflare key url.
 
     // Core dependency: HomelabClient knows how to call configured HTTP endpoints.
     let client = HomelabClient::new(config);
