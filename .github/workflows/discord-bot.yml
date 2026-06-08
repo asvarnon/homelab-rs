@@ -3,7 +3,7 @@ name: Build and publish homelab-discord
 on:
   push:
     tags:
-      - "v*"
+      - "homelab-discord-v*"
 
 jobs:
   build-and-push:

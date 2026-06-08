@@ -1,0 +1,25 @@
+name: Build and release homelab-mcp
+
+on:
+  push:
+    tags:
+      - "homelab-mcp-v*"
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build release binary
+        run: cargo build --release -p homelab-mcp
+
+      - name: Attach binary to GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: target/release/homelab-mcp
