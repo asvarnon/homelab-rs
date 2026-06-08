@@ -2,7 +2,7 @@
 //!
 //! MCP adapter LLMs.
 
-use auth::{AuthKeys, Key};
+use auth::AuthKeys;
 use axum::{middleware, Router};
 use homelab_core::{
     tools::{opnsense, proxmox},
@@ -15,9 +15,11 @@ use rmcp::transport::streamable_http_server::{
 use rmcp::{handler::server::tool::ToolRouter, model::CallToolResult, tool, tool_router};
 use rmcp::{tool_handler, ServerHandler};
 use rmcp::{transport::stdio, ServiceExt};
+use state::AppState;
 use std::{ptr::read, sync::Arc};
 use tracing::info;
 mod auth;
+mod state;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -32,6 +34,7 @@ async fn main() -> anyhow::Result<()> {
     let config_path = std::env::var("HOMELAB_CONFIG").unwrap_or_else(|_| "config.toml".to_string());
     let config = Config::load(config_path)?;
     let cf_url = std::env::var("CF_CERTS_URL").expect("CF_CERTS_URL not set");
+    let profile = std::env::var("PROFILE").expect("No profile is configured...");
 
     let auth_client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
@@ -44,6 +47,8 @@ async fn main() -> anyhow::Result<()> {
             .json::<AuthKeys>()
             .await?,
     ); //call cloudflare key url.
+
+    let app_state = Arc::new(AppState { auth_keys, profile });
 
     // Core dependency: HomelabClient knows how to call configured HTTP endpoints.
     let client = HomelabClient::new(config);
@@ -61,10 +66,10 @@ async fn main() -> anyhow::Result<()> {
     let app = Router::new()
         .nest_service("/mcp", mcp_service)
         .layer(middleware::from_fn_with_state(
-            auth_keys.clone(),
+            app_state.clone(),
             auth::require_cf_jwt, // <- pass the function itself, axum calls it per-request
         ))
-        .with_state(auth_keys);
+        .with_state(app_state);
 
     // bind and serve listener
     let listener = tokio::net::TcpListener::bind("127.0.0.1:8787").await?;

@@ -9,6 +9,8 @@ use axum::{
 use jsonwebtoken::{decode, decode_header, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 
+use crate::state::AppState;
+
 #[derive(Deserialize)]
 pub struct AuthKeys {
     pub keys: Vec<Key>,
@@ -22,10 +24,13 @@ pub struct Key {
 }
 
 pub async fn require_cf_jwt(
-    State(auth_keys): State<Arc<AuthKeys>>,
+    State(state): State<Arc<AppState>>,
     request: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
+    if state.profile == "local" {
+        return Ok(next.run(request).await);
+    };
     let token = request
         .headers()
         .get("Cf-Access-Jwt-Assertion")
@@ -39,7 +44,7 @@ pub async fn require_cf_jwt(
         }
     };
 
-    match verify_token(token, auth_keys.as_ref()) {
+    match verify_token(token, state.auth_keys.as_ref()) {
         Ok(()) => Ok(next.run(request).await),
         Err(reason) => {
             tracing::warn!(?reason, "jwt rejected");
