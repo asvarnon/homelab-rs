@@ -10,3 +10,4 @@ scripts/*.local.sh
 **/*.local.json
 .zed/debug.json
 CLAUDE.md
+.claude/agents/
