@@ -4,7 +4,6 @@ resolver = "2"
 members = [
     "crates/homelab-core",
     "crates/homelab-mcp",
-    "crates/homelab-discord",
 ]
 
 [workspace.dependencies]
