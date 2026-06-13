@@ -8,11 +8,11 @@ Three-crate workspace:
 
 - **`homelab-core`** — HTTP client, config loading, auth, and all tool functions. No MCP dependency. Testable in isolation via `cargo test` and `examples/`.
 - **`homelab-mcp`** — Thin adapter that wires `homelab-core` tool functions to the MCP protocol over HTTP. Uses `rmcp` with `#[tool]` macros. Deployed to a VM behind a Cloudflare Tunnel; all inbound requests are validated against a Cloudflare Access JWT before reaching the tool handlers.
-- **`homelab-discord`** — Discord bot. @mention triggers a thread; all replies in that thread share one conversation context backed by Redis. LLM inference via Ollama with SearXNG as a web search tool.
+- **`homelab-discord`** — Discord bot. @mention triggers a thread for the exchange, with Redis as hot 24h working memory and `context-forge` as durable long-term memory (distilled summaries + facts, BM25 recall). LLM inference via Ollama with SearXNG as a web search tool.
 
 The boundary rule: `homelab-core` returns domain types (`Vec<NodeSummary>`, `HomelabError`). `homelab-mcp` converts those to protocol types (`CallToolResult`, `McpError`). MCP types never enter `homelab-core`.
 
-`homelab-discord` is standalone — it does not depend on `homelab-core`. It manages its own Ollama and Redis connections.
+`homelab-discord` is standalone — it does not depend on `homelab-core`. It manages its own Ollama, Redis, and `context-forge` (local SQLite) memory store.
 
 ## Tools
 
@@ -181,12 +181,15 @@ cargo install --path crates/homelab-mcp
 
 ## Discord Bot
 
-`homelab-discord` is a friend-group Discord bot. @mention it anywhere to start a conversation — the bot creates a thread and all replies in that thread share one context. No @mention needed for follow-up messages inside the thread.
+`homelab-discord` is a friend-group Discord bot. @mention it anywhere to start a conversation — the bot creates a thread for the exchange. It remembers across conversations: cold threads are distilled into durable memory and relevant past context is recalled into new ones.
 
 ### How it works
 
-- **Trigger:** @mention in any channel → bot creates a thread, loads/saves history in Redis
-- **Thread continuity:** subsequent messages in a bot-owned thread are answered without requiring a mention
+- **Trigger:** every message to the bot must @mention it. The first mention in a channel opens a thread; reply with another @mention for each follow-up.
+- **Working memory (hot):** per-thread conversation history in Redis (24h+ TTL).
+- **Long-term memory:** `context-forge` (local SQLite + FTS5 BM25). Relevant past memory is recalled per turn, scoped server-wide, and injected into the prompt as a clearly labeled reference block (never as instructions). Secrets are scrubbed before anything is stored.
+- **Distillation:** a cold thread is summarized into a summary + durable facts and saved. It runs in the background ~2h after a thread goes quiet, again as a backstop when the thread auto-archives, or on demand — and reuses the **same** Ollama endpoint/model the bot already chats with, so it needs no extra infrastructure.
+- **`!remember`:** post `!remember` in a thread to distill it to long-term memory immediately and archive the thread. Works without an @mention.
 - **LLM:** Ollama `/api/chat` with tool calling enabled
 - **Search:** SearXNG invoked automatically by the LLM when current information is needed
 - **Persona:** configured via `PERSONA` env var — multiline system prompt, no restart of the image required, just update `.env` and `docker compose restart discord-bot`
@@ -203,6 +206,9 @@ Deployed via Docker Compose on the inference host. All configuration via env var
 | `REDIS_URL` | Redis connection string, e.g. `redis://redis:6379` |
 | `SEARXNG_URL` | SearXNG search endpoint, e.g. `http://<lxc-ip>:8888/search` |
 | `PERSONA` | Full system prompt (multiline, double-quoted in `.env`) |
+| `CONTEXT_FORGE_DB` | Optional. Path to the long-term memory SQLite file. Defaults to `~/.context-forge/discord.db`; mount a persistent volume here so memory survives container restarts. |
+
+Distillation reuses `OLLAMA_HOST` and `OLLAMA_MODEL` (it targets the OpenAI-compatible `/v1` endpoint on the same host) — no separate inference endpoint is configured.
 
 The Docker image is built and published via GitHub Actions. The host pulls the image — it does not need Rust installed.
 
