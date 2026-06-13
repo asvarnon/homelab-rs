@@ -1,18 +1,17 @@
 # homelab-rs
 
-A Rust workspace with two tools: an MCP server that exposes homelab infrastructure as AI-callable tools, and a Discord bot backed by local LLM inference.
+A Rust workspace for an MCP server that exposes homelab infrastructure as AI-callable tools.
 
 ## Architecture
 
-Three-crate workspace:
+Two-crate workspace:
 
 - **`homelab-core`** — HTTP client, config loading, auth, and all tool functions. No MCP dependency. Testable in isolation via `cargo test` and `examples/`.
 - **`homelab-mcp`** — Thin adapter that wires `homelab-core` tool functions to the MCP protocol over HTTP. Uses `rmcp` with `#[tool]` macros. Deployed to a VM behind a Cloudflare Tunnel; all inbound requests are validated against a Cloudflare Access JWT before reaching the tool handlers.
-- **`homelab-discord`** — Discord bot. @mention triggers a thread for the exchange, with Redis as hot 24h working memory and `context-forge` as durable long-term memory (distilled summaries + facts, BM25 recall). LLM inference via Ollama with SearXNG as a web search tool.
 
 The boundary rule: `homelab-core` returns domain types (`Vec<NodeSummary>`, `HomelabError`). `homelab-mcp` converts those to protocol types (`CallToolResult`, `McpError`). MCP types never enter `homelab-core`.
 
-`homelab-discord` is standalone — it does not depend on `homelab-core`. It manages its own Ollama, Redis, and `context-forge` (local SQLite) memory store.
+> **The Discord bot has moved.** `homelab-discord` was extracted to its own repository — now **[Husk](https://github.com/asvarnon/husk)** (`ghcr.io/asvarnon/husk`). It shared no code with this workspace and its `context-forge`/`rusqlite` dependency conflicted with this graph, so it lives standalone. A future public/bot-facing MCP binary may be added here for the bot to call over the wire.
 
 ## Tools
 
@@ -179,64 +178,9 @@ cargo run --example opnsense_leases -p homelab-core
 cargo install --path crates/homelab-mcp
 ```
 
-## Discord Bot
+## Discord Bot — moved to [Husk](https://github.com/asvarnon/husk)
 
-`homelab-discord` is a friend-group Discord bot. @mention it anywhere to start a conversation — the bot creates a thread for the exchange. It remembers across conversations: cold threads are distilled into durable memory and relevant past context is recalled into new ones.
-
-### How it works
-
-- **Trigger:** every message to the bot must @mention it. The first mention in a channel opens a thread; reply with another @mention for each follow-up.
-- **Working memory (hot):** per-thread conversation history in Redis (24h+ TTL).
-- **Long-term memory:** `context-forge` (local SQLite + FTS5 BM25). Relevant past memory is recalled per turn, scoped server-wide, and injected into the prompt as a clearly labeled reference block (never as instructions). Secrets are scrubbed before anything is stored.
-- **Distillation:** a cold thread is summarized into a summary + durable facts and saved. It runs in the background ~2h after a thread goes quiet, again as a backstop when the thread auto-archives, or on demand — and reuses the **same** Ollama endpoint/model the bot already chats with, so it needs no extra infrastructure.
-- **`!remember`:** post `!remember` in a thread to distill it to long-term memory immediately and archive the thread. Works without an @mention.
-- **LLM:** Ollama `/api/chat` with tool calling enabled
-- **Search:** SearXNG invoked automatically by the LLM when current information is needed
-- **Persona:** configured via `PERSONA` env var — multiline system prompt, no restart of the image required, just update `.env` and `docker compose restart discord-bot`
-
-### Deploy
-
-Deployed via Docker Compose on the inference host. All configuration via env vars — no defaults, bot panics at startup if any are missing:
-
-| Var | Description |
-|---|---|
-| `DISCORD_TOKEN` | Bot token from Discord developer portal |
-| `OLLAMA_HOST` | Ollama base URL, e.g. `http://host.docker.internal:11434` |
-| `OLLAMA_MODEL` | Model name, e.g. `llama3.2:latest` |
-| `REDIS_URL` | Redis connection string, e.g. `redis://redis:6379` |
-| `SEARXNG_URL` | SearXNG search endpoint, e.g. `http://<lxc-ip>:8888/search` |
-| `PERSONA` | Full system prompt (multiline, double-quoted in `.env`) |
-| `CONTEXT_FORGE_DB` | Optional. Path to the long-term memory SQLite file. Defaults to `~/.context-forge/discord.db`; mount a persistent volume here so memory survives container restarts. |
-
-Distillation reuses `OLLAMA_HOST` and `OLLAMA_MODEL` (it targets the OpenAI-compatible `/v1` endpoint on the same host) — no separate inference endpoint is configured. `OLLAMA_HOST` must be `http://` (the distiller ships no TLS stack).
-
-#### Persistent memory
-
-Long-term memory is a SQLite file at `CONTEXT_FORGE_DB`. It is created automatically on first start (no migration step), but it lives inside the container — **mount a volume or it resets on every redeploy.** Point `CONTEXT_FORGE_DB` at the mounted path:
-
-```yaml
-services:
-  discord-bot:
-    image: ghcr.io/<owner>/homelab-discord:homelab-discord-v<version>
-    restart: unless-stopped
-    env_file: .env
-    environment:
-      - CONTEXT_FORGE_DB=/data/discord.db
-    volumes:
-      - discord-memory:/data
-    # Only if Ollama runs on the host rather than in this compose project:
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-
-volumes:
-  discord-memory:
-```
-
-#### Bot permissions
-
-The bot role needs **Send Messages**, **Create Public Threads**, and **Send Messages in Threads** for normal operation, plus **Manage Threads** so `!remember` can archive a thread after committing it.
-
-The Docker image is built and published via GitHub Actions on `homelab-discord-v*` tags. The host pulls the image — it does not need Rust installed.
+The friend-group Discord bot that used to live in this workspace (`homelab-discord`) was extracted to its own repository, **[Husk](https://github.com/asvarnon/husk)** — an Ollama-backed Discord bot with long-term memory (context-forge), web search, and a configurable persona. It's published as `ghcr.io/asvarnon/husk`. It shared no code with this workspace, so it lives standalone; see that repo for usage, configuration, and deployment.
 
 ---
 
