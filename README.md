@@ -208,9 +208,35 @@ Deployed via Docker Compose on the inference host. All configuration via env var
 | `PERSONA` | Full system prompt (multiline, double-quoted in `.env`) |
 | `CONTEXT_FORGE_DB` | Optional. Path to the long-term memory SQLite file. Defaults to `~/.context-forge/discord.db`; mount a persistent volume here so memory survives container restarts. |
 
-Distillation reuses `OLLAMA_HOST` and `OLLAMA_MODEL` (it targets the OpenAI-compatible `/v1` endpoint on the same host) — no separate inference endpoint is configured.
+Distillation reuses `OLLAMA_HOST` and `OLLAMA_MODEL` (it targets the OpenAI-compatible `/v1` endpoint on the same host) — no separate inference endpoint is configured. `OLLAMA_HOST` must be `http://` (the distiller ships no TLS stack).
 
-The Docker image is built and published via GitHub Actions. The host pulls the image — it does not need Rust installed.
+#### Persistent memory
+
+Long-term memory is a SQLite file at `CONTEXT_FORGE_DB`. It is created automatically on first start (no migration step), but it lives inside the container — **mount a volume or it resets on every redeploy.** Point `CONTEXT_FORGE_DB` at the mounted path:
+
+```yaml
+services:
+  discord-bot:
+    image: ghcr.io/<owner>/homelab-discord:homelab-discord-v<version>
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - CONTEXT_FORGE_DB=/data/discord.db
+    volumes:
+      - discord-memory:/data
+    # Only if Ollama runs on the host rather than in this compose project:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  discord-memory:
+```
+
+#### Bot permissions
+
+The bot role needs **Send Messages**, **Create Public Threads**, and **Send Messages in Threads** for normal operation, plus **Manage Threads** so `!remember` can archive a thread after committing it.
+
+The Docker image is built and published via GitHub Actions on `homelab-discord-v*` tags. The host pulls the image — it does not need Rust installed.
 
 ---
 
