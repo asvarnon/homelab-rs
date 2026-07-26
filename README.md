@@ -24,6 +24,10 @@ The boundary rule: `homelab-core` returns domain types (`Vec<NodeSummary>`, `Hom
 | `osrs_market_history` | OSRS Wiki Prices API | Aggregate price/volume history for one item and lookback |
 | `osrs_market_activity` | OSRS Wiki Prices API | Selected item activity from a bulk 5-minute or hourly snapshot |
 
+## OSRS Wiki Prices API
+
+The OSRS market tools call the public OSRS Wiki Prices API at `https://prices.runescape.wiki/api/v2/osrs`. This base URL is intentionally hardcoded in `crates/homelab-mcp/src/osrs_market.rs`: it needs no credentials and is not deployment-specific configuration. The client sends a descriptive `User-Agent` and caches its bulk responses. It is not read from `.env` or `config.toml`.
+
 ## Config
 
 Config lives in a TOML file. Path defaults to `config.toml` in the working directory, or override with `HOMELAB_CONFIG` env var.

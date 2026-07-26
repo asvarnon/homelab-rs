@@ -44,7 +44,12 @@ pub async fn require_cf_jwt(
         }
     };
 
-    match verify_token(token, state.auth_keys.as_ref()) {
+    let auth_keys = state.auth_keys.as_ref().ok_or_else(|| {
+        tracing::error!("Cloudflare keys are unavailable outside the local profile");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    match verify_token(token, auth_keys.as_ref()) {
         Ok(()) => Ok(next.run(request).await),
         Err(reason) => {
             tracing::warn!(?reason, "jwt rejected");

@@ -39,24 +39,28 @@ async fn main() -> anyhow::Result<()> {
     // Boot boundary: load runtime configuration before constructing the adapter.
     let config_path = std::env::var("HOMELAB_CONFIG").unwrap_or_else(|_| "config.toml".to_string());
     let config = Config::load(config_path)?;
-    let cf_url = std::env::var("CF_CERTS_URL").expect("CF_CERTS_URL not set");
     let profile = std::env::var("PROFILE").expect("No profile is configured...");
     // Public hostname this server is reachable at (e.g. via Cloudflare Tunnel) — added to
     // rmcp's Host-header allowlist alongside the loopback defaults so the DNS-rebinding
     // guard doesn't reject legitimate traffic arriving through the tunnel.
     let public_host = std::env::var("MCP_PUBLIC_HOST").ok();
 
-    let auth_client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(10))
-        .build()?;
-    let auth_keys = Arc::new(
-        auth_client
-            .get(&cf_url)
-            .send()
-            .await?
-            .json::<AuthKeys>()
-            .await?,
-    ); //call cloudflare key url.
+    let auth_keys = if profile == "local" {
+        None
+    } else {
+        let cf_url = std::env::var("CF_CERTS_URL").expect("CF_CERTS_URL not set");
+        let auth_client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(10))
+            .build()?;
+        Some(Arc::new(
+            auth_client
+                .get(&cf_url)
+                .send()
+                .await?
+                .json::<AuthKeys>()
+                .await?,
+        ))
+    };
 
     let app_state = Arc::new(AppState { auth_keys, profile });
 
