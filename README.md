@@ -20,6 +20,9 @@ The boundary rule: `homelab-core` returns domain types (`Vec<NodeSummary>`, `Hom
 | `scan_nodes` | Proxmox | Node CPU, memory, uptime across the cluster |
 | `scan_cluster` | Proxmox | All nodes, VMs, and LXCs in one call |
 | `get_dhcp_leases` | OPNsense | Active DHCP leases with IP, MAC, hostname, VLAN, and time remaining |
+| `osrs_market_lookup` | OSRS Wiki Prices API | Item metadata plus latest observed high/low GE trades |
+| `osrs_market_history` | OSRS Wiki Prices API | Aggregate price/volume history for one item and lookback |
+| `osrs_market_activity` | OSRS Wiki Prices API | Selected item activity from a bulk 5-minute or hourly snapshot |
 
 ## Config
 

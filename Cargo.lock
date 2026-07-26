@@ -875,11 +875,13 @@ dependencies = [
  "jsonwebtoken",
  "reqwest",
  "rmcp",
+ "schemars",
  "serde",
  "serde_json",
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "wiremock",
 ]
 
 [[package]]

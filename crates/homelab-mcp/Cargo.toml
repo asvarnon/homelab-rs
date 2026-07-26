@@ -16,5 +16,7 @@ axum = "0.8.9"
 jsonwebtoken = { version = "10.4.0", features = ["rust_crypto"] }
 reqwest.workspace = true
 dotenvy = "0.15.7"
-# In a real implementation, we'd use a proper MCP crate here.
-# For now, we'll placeholder.
+schemars = "1.2.1"
+
+[dev-dependencies]
+wiremock = "0.6"
